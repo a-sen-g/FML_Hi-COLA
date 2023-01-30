@@ -36,7 +36,7 @@ from argparse import ArgumentParser
 
 to_exec = eb.declare_symbols()
 exec(to_exec)
- 
+
 parser = ArgumentParser(prog='Generate_Simulation_Input')
 parser.add_argument('input_ini_filenames',nargs=2)
 
@@ -112,5 +112,3 @@ sp.write_data_flex([a_arr,E_arr, UE_prime_UE_arr],filename_expansion)
 sp.write_data_flex([a_arr,chioverdelta_arr,coupling_factor_arr],filename_force)
 abs_directory = os.path.abspath(directory)
 print(f'Files generated. Saved in {abs_directory}')
-
-
