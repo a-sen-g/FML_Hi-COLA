@@ -21,7 +21,7 @@ import time
 import os
 from suppressor import *
 #import timing #need to include the timing.py in working directory for this to work in apocrita
- 
+
 
 ##################
 # Plotting style #
@@ -150,52 +150,14 @@ def fried1(phi_prime, k1, g1, Omega_r, Omega_m, E, alpha_M, Ms_Mp, Meffsq_Mpsq):
     zer = zer0 + zer1 + zer2 - 1.
     return zer
 
-#this function is obtained by substituting eq. 90 (omegade function) in Ashim's overleaf into eq. 8
-def fried_closure(G3, G4,  K,
-        f='f',
-        E='E',
-        Eprime='Eprime',
-        M_pG4 = 'M_{pG4}',
-        M_KG4 = 'M_{KG4}',
-        M_G3s = 'M_{G3s}',
-        M_sG4 = 'M_{sG4}',
-        M_G3G4 = 'M_{G3G4}',
-        M_Ks = 'M_{Ks}',
-        phi='phi',
-        phiprime='phiprime',
-        phiprimeprime='phiprimeprime',
-        omegar='Omega_r',
-        omegam='Omega_m',
-        omegal='Omega_l',
-        X='X'):
-    G3x, G3xx, G3xphi, G3phix, G3phiphi, G3phi = G3_func(G3)
-    G4x, G4xx, G4xphi, G4phix, G4phiphi, G4phi = G4_func(G4)
-    Kx, Kxx, Kxphi, Kphi = K_func(K)
-    param = [G3, G4, K, E, Eprime, M_pG4, M_KG4, M_G3s, M_sG4, M_G3G4, M_Ks, phi, phiprime, phiprimeprime, omegar, omegam, omegal, f, X]
-    paramnum = len(param)
-    for i in np.arange(0,paramnum):
-            if isinstance(param[i],str): #these sympy variables are prob not globally defined, so need to always make sure there are corresponding global variables with the smae names for .subs to work?
-                param[i] = sy(param[i])
-    [G3, G4, K, E, Eprime, M_pG4, M_KG4, M_G3s, M_sG4, M_G3G4, M_Ks, phi, phiprime, phiprimeprime, omegar, omegam, omegal, f, X] = param
-    omega_field = omega_phi(G3,G4,K,M_pG4=M_pG4, M_KG4=M_KG4, M_G3s=M_G3s, M_sG4=M_sG4, M_G3G4=M_G3G4, M_Ks=M_Ks)
-    fried1_RHS = omega_field + omegam + omegar + omegal -1.
-    Xreal = (1./2.)*(E**2.)*(phiprime**2.)
-    fried1_RHS = fried1_RHS.subs(X,Xreal)
-    # print('fried1 SymPy is ')
-    # print(sym.latex(fried1_RHS))
-    # if (model=='cubic' or model=='cubic Galileon' or model=='cubic_Galileon' or model=='Cubic Galileon'):
-    #     fried1_RHS_lambda = sym.lambdify([phiprime,E,omegar,omegam,k1,g31],fried1_RHS)
-    # elif model=='Traykova':
-    #     fried1_RHS_lambda = sym.lambdify([phiprime,E,omegar,omegam,k1,k2, g31, g32],fried1_RHS)
-    return fried1_RHS
-    
+
 def fried_RHS_wrapper(cl_variable, cl_declaration, fried_RHS_lambda, E, phi_prime, Omega_r, Omega_m, Omega_l, parameters):
     argument_no = 5 + len(parameters)
     if cl_declaration[1] > argument_no -1:
         raise Exception('Invalid declaration - there is no valid argument index for the declaration')
     if cl_declaration[0] == 'odeint_parameters':
         if cl_declaration[1] == 0:
-            return fried_RHS_lambda(cl_variable,phi_prime,Omega_r,Omega_m,Omega_l, f, *parameters) #Closure used to compute E0
+            return fried_RHS_lambda(cl_variable,phi_prime,Omega_r,Omega_m,Omega_l, f_phi, *parameters) #Closure used to compute E0
         if cl_declaration[1] == 1:
             return fried_RHS_lambda(E,cl_variable,Omega_r,Omega_m,Omega_l,*parameters) #Closure used to compute phi0
         if cl_declaration[1] == 2:
@@ -209,8 +171,8 @@ def fried_RHS_wrapper(cl_variable, cl_declaration, fried_RHS_lambda, E, phi_prim
         return fried_RHS_lambda(E,phi_prime,Omega_r,Omega_m,Omega_l,*parameters)
     else:
         raise Exception('Invalid string in declaration list. Must be either \'odeint_parameters\' or \'parameters\'')
-            
-    
+
+
 
 def comp_param_close(fried_closure_lambda, cl_declaration, E0, phi_prime0, Omega_r0, Omega_m0, Omega_l0,parameters): #calling the closure-fixed parameter "k1" is arbitrary, the choice of which parameter to fix is determined by lambdification or fried_RHS
     cl_guess = 1.0 #this may need to be changed depending on what is being solved for through closure, if fsolve has trouble
@@ -227,7 +189,7 @@ def comp_param_close(fried_closure_lambda, cl_declaration, E0, phi_prime0, Omega
             cl_guess = Omega_l0
     if cl_declaration[0] == 'parameters':
         cl_guess = parameters[cl_declaration[1]]
-    cl_variable,fsolvedict,fsolveier,fsolvemsg = fsolve(fried_RHS_wrapper, cl_guess, args=(cl_declaration, fried_closure_lambda, E0, phi_prime0, Omega_r0,Omega_m0, Omega_l0,parameters), xtol=1e-6,full_output=True) #make sure arguments match lambdification line in run_builder.py 
+    cl_variable,fsolvedict,fsolveier,fsolvemsg = fsolve(fried_RHS_wrapper, cl_guess, args=(cl_declaration, fried_closure_lambda, E0, phi_prime0, Omega_r0,Omega_m0, Omega_l0,parameters), xtol=1e-6,full_output=True) #make sure arguments match lambdification line in run_builder.py
     # print('f solve integer is '+str(fsolveier))
     # print('f solve message is '+fsolvemsg)
     # print('f solve found '+str(cl_variable))
@@ -275,7 +237,7 @@ def comp_phi_primeprime(k1, g1, Omega_r, E, E_prime, phi_prime, alpha_M, alpha_M
 
 def comp_primes(x, Y, E0, Omega_r0, Omega_m0, Omega_l0, E_prime_E_lambda, E_prime_E_safelambda, phi_primeprime_lambda, phi_primeprime_safelambda, A_lambda, cl_declaration, parameters,threshold=1e-3,GR_flag=False): #x, Y swapped for solve_ivp ###ADD LAMBDA FUNCTION AS ARGUMENT###
     '''
-    x: the 
+    x: the
     '''
     a = np.exp(x) #unused, this (or x) was previously used to compute LCDM quantities, which are no longer used.
     #print('a is '+str(a))
@@ -287,12 +249,12 @@ def comp_primes(x, Y, E0, Omega_r0, Omega_m0, Omega_l0, E_prime_E_lambda, E_prim
         A_sign = 1.
     elif A_value - abs(A_value) != 0:
         A_sign = -1.
-    
-    
+
+
     if (abs(A_value) >= threshold and GR_flag==False) or (threshold==0. and GR_flag==False):
         E_prime_E_evaluated = E_prime_E_lambda(EUY,phi_primeY,Omega_rY,Omega_lY,*parameters)
         E_prime_evaluated = E_prime_E_evaluated*EUY
-        phi_primeprime_evaluated = phi_primeprime_lambda(EUY,E_prime_evaluated,phi_primeY,*parameters)    
+        phi_primeprime_evaluated = phi_primeprime_lambda(EUY,E_prime_evaluated,phi_primeY,*parameters)
     if (abs(A_value) < threshold and GR_flag==False):
         E_prime_E_evaluated = E_prime_E_safelambda(EUY,phi_primeY,Omega_rY,Omega_lY, threshold,A_sign,*parameters)
         E_prime_evaluated = E_prime_E_evaluated*EUY
@@ -301,40 +263,63 @@ def comp_primes(x, Y, E0, Omega_r0, Omega_m0, Omega_l0, E_prime_E_lambda, E_prim
         E_prime_E_evaluated = comp_E_prime_E_LCDM(x,Omega_r0,Omega_m0)
         E_prime_evaluated = E_prime_E_evaluated*EUY
         phi_primeprime_evaluated = 0.
-    if cl_declaration[0] == 'odeint_parameters': #this indicates dS approach
+    if cl_declaration[0] == 'odeint_parameters': #usually indicates dS approach, so we must convert U back to E, since this is what the Omega_prime functions use
         EY = EUY/E0
         EYprime = E_prime_evaluated/E0
-    if cl_declaration[0] == 'parameters':
+    if cl_declaration[0] == 'parameters': #usually indicates 'today' approach, no need to change the Hubble variable, it is already E
         EY = EUY
         EYprime = E_prime_evaluated
-    Omega_r_prime = comp_Omega_r_prime(Omega_rY, EY, EYprime) 
+    Omega_r_prime = comp_Omega_r_prime(Omega_rY, EY, EYprime)
     Omega_m_prime = comp_Omega_m_prime(Omega_mY, EY, EYprime)
     Omega_l_prime = comp_Omega_l_prime(Omega_l0,EY, EYprime)
     return [phi_primeprime_evaluated, E_prime_evaluated, Omega_r_prime, Omega_m_prime, Omega_l_prime]
 
+def chi_over_delta(a_arr, E_arr, calB_arr, calC_arr, Omega_m0): #the E_arr is actual E, not U! Convert U_arr to E_arr!
+    chioverdelta = np.array(calB_arr)*np.array(calC_arr)*Omega_m0/np.array(E_arr)/np.array(E_arr)/np.array(a_arr)/np.array(a_arr)/np.array(a_arr)
+    return chioverdelta
 
-def run_solver_inv(z_num, z_ini, E0, phi_prime0, E_prime_E_lambda, E_prime_E_safelambda, phi_primeprime_lambda, phi_primeprime_safelambda, omega_phi_lambda, A_lambda, fried_RHS_lambda, cl_declaration, parameters, Omega_r0, Omega_m0, Omega_l0, c_M, hmaxv, suppression_flag, threshold,GR_flag):
-    Omega_DE_LCDM0 = 1.-Omega_r0-Omega_m0
+
+def run_solver(read_out_dict):
+# (z_num, z_ini, E0, phi_prime0, E_prime_E_lambda, E_prime_E_safelambda, phi_primeprime_lambda, phi_primeprime_safelambda,
+#  omega_phi_lambda, A_lambda, fried_RHS_lambda, calB_lambda, calC_lambda, coupling_factor, cl_declaration, parameters,
+#  Omega_r0, Omega_m0, Omega_l0, parameter_symbols, odeint_parameter_symbols, suppression_flag, threshold,GR_flag):
+
+
+    [Omega_r0, Omega_m0, Omega_l0] = read_out_dict['cosmological_parameters']
+    [E0, phi_prime0] = read_out_dict['initial_conditions']
+    [Npoints, z_max, suppression_flag, threshold, GR_flag] = read_out_dict['simulation_parameters']
+    parameters = read_out_dict['Horndeski_parameters']
+
+    E_prime_E_lambda = read_out_dict['E_prime_E_lambda']
+    E_prime_E_safelambda = read_out_dict['E_prime_E_safelambda']
+    phi_primeprime_lambda = read_out_dict['phi_primeprime_lambda']
+    phi_primeprime_safelambda = read_out_dict['phi_primeprime_safelambda']
+    omega_phi_lambda = read_out_dict['omega_phi_lambda']
+    A_lambda = read_out_dict['A_lambda']
+    fried_RHS_lambda = read_out_dict['fried_RHS_lambda']
+    calB_lambda = read_out_dict['calB_lambda']
+    calC_lambda = read_out_dict['calC_lambda']
+    coupling_factor = read_out_dict['coupling_factor']
+
+    parameter_symbols = read_out_dict['symbol_list']
+    odeint_parameter_symbols = read_out_dict['odeint_parameter_symbols']
+    cl_declaration = read_out_dict['closure_declaration']
 
     z_final = 0.
-    x_ini = np.log(1./(1.+z_ini))
+    x_ini = np.log(1./(1.+z_max))
     x_final = np.log(1./(1.+z_final))
-    x_arr = np.linspace(x_ini, x_final, z_num)
+    x_arr = np.linspace(x_ini, x_final, Npoints)
     a_arr = [np.exp(x) for x in x_arr]
     x_arr_inv = x_arr[::-1]
     a_arr_inv = a_arr[::-1]
 
-    z_early = 10
-    x_early = np.log(1./(1.+z_early))
-    alpha_M0 =0.
-    Meffsq_Mpsq0 = comp_Meffsq_x2_x1_propto_Omega_DE_LCDM(x_early, 0., Omega_r0, Omega_m0, c_M)
-    phi_prime_guess = 0.9
+
     # print('phi_prime imminent')
     if GR_flag is True:
         phi_prime0 = 0.
     #print('phi prime0 is '+str(phi_prime0))
     cl_var = comp_param_close(fried_RHS_lambda, cl_declaration, E0, phi_prime0, Omega_r0, Omega_m0, Omega_l0, parameters)
-    print('Closure parameter is '+str(cl_var))
+
     if cl_declaration[0] == 'odeint_parameters':
         if cl_declaration[1] == 0:
             E0_closed = cl_var
@@ -350,12 +335,11 @@ def run_solver_inv(z_num, z_ini, E0, phi_prime0, E_prime_E_lambda, E_prime_E_saf
         if cl_declaration[1] == 3:
             Omega_m0_closed = cl_var
             Y0 = [phi_prime0,E0,Omega_r0,Omega_m0_closed, Omega_l0]
-        # if cl_declaration[1] == 4: #seemsinvalid, omega_l0 is always set by choice of f
-        #     Omega_l0_closed = cl_var
-        #     Y0 = [phi_prime0,E0,Omega_r0,Omega_m0, Omega_l0_closed]
+        print('Closure parameter is '+ str(odeint_parameter_symbols[cl_declaration[1]])+' = ' +str(cl_var))
     if cl_declaration[0] == 'parameters':
         parameters[cl_declaration[1]] = cl_var
         Y0 = [phi_prime0,E0,Omega_r0,Omega_m0,Omega_l0]
+        print('Closure parameter is '+ str(parameter_symbols[cl_declaration[1]])+' = ' +str(cl_var))
     # print('Y0 is '+str(Y0))
 
     if suppression_flag is True:
@@ -377,85 +361,95 @@ def run_solver_inv(z_num, z_ini, E0, phi_prime0, E_prime_E_lambda, E_prime_E_saf
     # print('E_arr is '+str(E_arr[0]))
     # Omega_r_arr = ans.y[2]
     # Omega_m_arr = ans.y[3]
-    
+
 
     E_prime_E_LCDM_arr = [comp_E_prime_E_LCDM(xv, Omega_r0, Omega_m0) for xv in x_arr_inv]
     Omega_DE_LCDM_arr = [comp_Omega_DE_LCDM(xv, Omega_r0, Omega_m0) for xv in x_arr_inv]
     Omega_DE_prime_LCDM_arr = [comp_Omega_DE_prime_LCDM(E_prime_E_LCDMv, Omega_DE_LCDMv) for E_prime_E_LCDMv, Omega_DE_LCDMv in zip(E_prime_E_LCDM_arr, Omega_DE_LCDM_arr)]
-    alpha_M_arr = [comp_alpha_M_propto_Omega_DE_LCDM(c_M, Omega_DE_LCDMv) for Omega_DE_LCDMv in Omega_DE_LCDM_arr]
-    alpha_M_prime_arr = [comp_alpha_M_prime_propto_Omega_DE_LCDM(c_M, Omega_DE_prime_LCDMv) for Omega_DE_prime_LCDMv in Omega_DE_prime_LCDM_arr]
-    Meffsq_Mpsq_arr = [comp_Meffsq_x2_x1_propto_Omega_DE_LCDM(x_early, xv, Omega_r0, Omega_m0, c_M) for xv in x_arr_inv]
 
-    
-    E_prime_E_arr2 = []
-    phi_primeprime_arr2 = []
-    for Omega_rv, Omega_lv, Ev, phi_primev, alpha_Mv, alpha_M_primev, Meffsq_Mpsqv in zip(Omega_r_arr, Omega_l_arr, E_arr, phi_prime_arr, alpha_M_arr, alpha_M_prime_arr, Meffsq_Mpsq_arr):
-        E_prime_E_arr2.append(E_prime_E_lambda(Ev,phi_primev,Omega_rv, Omega_lv, *parameters))
-    E_prime_arr2 = [E_prime_Ev*Ev for E_prime_Ev, Ev in zip(E_prime_E_arr2, E_arr)]
-    for Omega_rv, Ev, E_primev, phi_primev, alpha_Mv, alpha_M_primev, Meffsq_Mpsqv in zip(Omega_r_arr, E_arr, E_prime_arr2, phi_prime_arr, alpha_M_arr, alpha_M_prime_arr, Meffsq_Mpsq_arr):
-        phi_primeprime_arr2.append(phi_primeprime_lambda(Ev,E_primev,phi_primev,*parameters))
-    
+    E_prime_E_arr = []
+    phi_primeprime_arr = []
+    for Omega_rv, Omega_lv, Ev, phi_primev in zip(Omega_r_arr, Omega_l_arr, E_arr, phi_prime_arr):
+        E_prime_E_arr.append(E_prime_E_lambda(Ev,phi_primev,Omega_rv, Omega_lv, *parameters))
+    E_prime_arr = [E_prime_Ev*Ev for E_prime_Ev, Ev in zip(E_prime_E_arr, E_arr)]
+    for Omega_rv, Ev, E_primev, phi_primev in zip(Omega_r_arr, E_arr, E_prime_arr, phi_prime_arr):
+        phi_primeprime_arr.append(phi_primeprime_lambda(Ev,E_primev,phi_primev,*parameters))
+
     A_arr = []
     for Ev, phi_primev,  in zip(E_arr,phi_prime_arr):
         A_arr.append(A_lambda(Ev, phi_primev, *parameters))
-        
+
     Omega_phi_arr = []
     for Ev, phiprimev in zip(E_arr,phi_prime_arr):
         Omega_phi_arr.append(omega_phi_lambda(Ev,phiprimev,*parameters))
     #######
-    
+
     Omega_DE_arr = []
     Omega_phi_diff_arr = []
     Omega_r_prime_arr = []
     Omega_m_prime_arr= []
     Omega_l_prime_arr = []
-    for Ev, E_primev, Omega_rv, Omega_mv, Omega_lv in zip(E_arr, E_prime_arr2, Omega_r_arr,Omega_m_arr, Omega_l_arr):
+    for Ev, E_primev, Omega_rv, Omega_mv, Omega_lv in zip(E_arr, E_prime_arr, Omega_r_arr,Omega_m_arr, Omega_l_arr):
         Omega_DE_arr.append(1. - Omega_rv - Omega_mv)
         Omega_phi_diff_arr.append(1. - Omega_rv - Omega_mv - Omega_lv)
         Omega_r_prime_arr.append(comp_Omega_r_prime(Omega_rv, Ev, E_primev))
         Omega_m_prime_arr.append(comp_Omega_m_prime(Omega_mv, Ev, E_primev))
         Omega_l_prime_arr.append(comp_Omega_l_prime(Omega_l0,Ev, E_primev))
-    
+
 
     array_output = []
-    for i in [a_arr_inv, E_arr, E_prime_E_arr2, E_prime_arr2, phi_prime_arr,  phi_primeprime_arr2, Omega_r_arr, Omega_m_arr, Omega_DE_arr, Omega_l_arr, Omega_phi_arr, Omega_phi_diff_arr, Omega_r_prime_arr, Omega_m_prime_arr, Omega_l_prime_arr, A_arr]:
+    for i in [a_arr_inv, E_arr, E_prime_E_arr, E_prime_arr, phi_prime_arr,  phi_primeprime_arr, Omega_r_arr, Omega_m_arr, Omega_DE_arr, Omega_l_arr, Omega_phi_arr, Omega_phi_diff_arr, Omega_r_prime_arr, Omega_m_prime_arr, Omega_l_prime_arr, A_arr]:
         i = np.array(i)
         array_output.append(i)
-    [a_arr_inv, E_arr, E_prime_E_arr2, E_prime_arr2, phi_prime_arr,  phi_primeprime_arr2, Omega_r_arr, Omega_m_arr, Omega_DE_arr, Omega_l_arr, Omega_phi_arr, Omega_phi_diff_arr, Omega_r_prime_arr, Omega_m_prime_arr, Omega_l_prime_arr, A_arr] = array_output
+    [a_arr_inv, E_arr, E_prime_E_arr, E_prime_arr, phi_prime_arr,  phi_primeprime_arr, Omega_r_arr, Omega_m_arr, Omega_DE_arr, Omega_l_arr, Omega_phi_arr, Omega_phi_diff_arr, Omega_r_prime_arr, Omega_m_prime_arr, Omega_l_prime_arr, A_arr] = array_output
 
-    return a_arr_inv, E_arr, E_prime_E_arr2, E_prime_arr2, phi_prime_arr,  phi_primeprime_arr2, Omega_r_arr, Omega_m_arr, Omega_DE_arr, Omega_l_arr, Omega_phi_arr, Omega_phi_diff_arr, Omega_r_prime_arr, Omega_m_prime_arr, Omega_l_prime_arr, A_arr #phi_prime_check_arr
+    calB_arr = []
+    calC_arr = []
+    coupling_factor_arr = []
+    for UEv, UEprimev, phiprimev, phiprimeprimev, av in zip(E_arr, E_prime_arr, phi_prime_arr, phi_primeprime_arr,a_arr):
+        calB_arr.append(calB_lambda(UEv,UEprimev,phiprimev,phiprimeprimev, *parameters))
+        calC_arr.append(calC_lambda(UEv,UEprimev,phiprimev,phiprimeprimev, *parameters))
+        coupling_factor_arr.append(coupling_factor(UEv,UEprimev,phiprimev,phiprimeprimev,*parameters))
 
-def chi_over_delta(a_arr, E_arr, calB_arr, calC_arr, Omega_m0): #the E_arr is actual E, not U! Convert U_arr to E_arr!
-    chioverdelta = np.array(calB_arr)*np.array(calC_arr)*Omega_m0/np.array(E_arr)/np.array(E_arr)/np.array(a_arr)/np.array(a_arr)/np.array(a_arr)
-    return chioverdelta
+    chioverdelta_arr = chi_over_delta(a_arr, E_arr, calB_arr, calC_arr, Omega_m0)
+
+    solution_arrays = {'a':a_arr, 'Hubble':E_arr, 'Hubble_prime':E_prime_arr,'E_prime_E':E_prime_E_arr,'scalar_prime':phi_prime_arr,'scalar_primeprime':phi_primeprime_arr}
+    cosmological_density_arrays = {'omega_m':Omega_m_arr,'omega_r':Omega_r_arr,'omega_l':Omega_l_arr,'omega_phi':Omega_phi_arr, 'omega_DE':Omega_DE_arr}
+    cosmo_density_prime_arrays = {'omega_m_prime':Omega_m_prime_arr,'omega_r_prime':Omega_r_prime_arr,'omega_l_prime':Omega_l_prime_arr}
+    force_quantities = {'A':A_arr, 'calB':calB_arr, 'calC':calC_arr, 'coupling_factor':coupling_factor_arr, 'chi_over_delta':chioverdelta_arr}
+    result = {}
+
+    for i in [solution_arrays, cosmological_density_arrays, cosmo_density_prime_arrays,force_quantities]:
+        result.update(i)
+
+    return result #a_arr_inv, E_arr, E_prime_E_arr, E_prime_arr, phi_prime_arr,  phi_primeprime_arr, Omega_r_arr, Omega_m_arr, Omega_DE_arr, Omega_l_arr, Omega_phi_arr, Omega_phi_diff_arr, Omega_r_prime_arr, Omega_m_prime_arr, Omega_l_prime_arr, A_arr, calB_arr, calC_arr, coupling_factor_arr, chioverdelta_arr #phi_prime_check_arr
+
+
 
 
 ###############################
 
-def comp_almost_track(E_dS_fac, Omega_r0, Omega_m0, f_value, almost, fried_RHS_lambda):
+def comp_almost_track(E_dS_fac, Omega_r0, Omega_m0, f_phi_value, almost, fried_RHS_lambda):
     E0 = comp_E_LCDM(0., Omega_r0, Omega_m0)
     EdS = E0*E_dS_fac #0.93 #*1e-30
     U0=1./EdS
-    
+
     Omega_DE0 = 1. - Omega_r0 - Omega_m0
-    Omega_l0 = (1.-f_value)*Omega_DE0
+    Omega_l0 = (1.-f_phi_value)*Omega_DE0
     alpha_param = 1. - Omega_l0/EdS/EdS
     k1_dS, g31_dS = -6.*alpha_param, 2.*alpha_param
-    parameters = [k1_dS, g31_dS]    
+    parameters = [k1_dS, g31_dS]
 
-    #y0 = comp_y_cuGal_dS(0.9, Omega_r0, Omega_m0, Omega_L0, E0, EdS)
     y0 = comp_param_close(fried_RHS_lambda, ['odeint_parameters',1], U0, 0.9, Omega_r0, Omega_m0, Omega_l0, parameters)
     track = (E0/EdS)**2.*y0-1.
     almost_track = track - almost
     return almost_track
 
-def comp_E_dS_max(E_dS_max_guess, Omr, Omm, f, almost, fried_RHS_lambda):
-    # if f == 0:
+def comp_E_dS_max(E_dS_max_guess, Omr, Omm, f_phi, almost, fried_RHS_lambda):
+    # if f_phi == 0:
     #     if almost < 1e-3:
-    #         f = 1e-3
+    #         f_phi = 1e-3
     #     else:
-    #         f = almost
-    E_dS_max = fsolve(comp_almost_track, E_dS_max_guess, args=(Omr, Omm, f, almost,fried_RHS_lambda))[0]
+    #         f_phi = almost
+    E_dS_max = fsolve(comp_almost_track, E_dS_max_guess, args=(Omr, Omm, f_phi, almost,fried_RHS_lambda))[0]
     return E_dS_max
-
-E, Eprime, phi, phiprime, phiprimeprime, X, k1, g31, g32, k2, g4, M_pG4, M_KG4, M_G3s, M_sG4, M_G3G4, M_Ks, M_gp, omegar, omegam, omegal = sym.symbols("E Eprime phi phiprime phiprimeprime X k_1 g_{31} g_{32} k_2 g_4 M_{pG4} M_{KG4} M_{G3s} M_{sG4} M_{G3G4} M_{Ks} M_{gp} Omega_r Omega_m Omega_l")
