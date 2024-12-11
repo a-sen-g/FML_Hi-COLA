@@ -525,7 +525,7 @@ namespace FML {
                     }
                 }
             }
-
+            
             // For multiple species
             template <class T>
             void GadgetWriter::write_gadget_single(std::string filename,
@@ -555,23 +555,32 @@ namespace FML {
 
                 // Count how many of each type we have
                 std::vector<size_t> npart_family(6, 0);
+                std::vector<size_t> npart_family_tot(6, 0);
 #ifdef GADGET_ONLY_READ_DM
                 npart_family[1] = NumPart;
+                npart_family_tot[1] = NumPartTot;
                 OmegaFamilyOverOmegaM = {0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
 #else
                 if constexpr (FML::PARTICLE::has_get_family<T>()) {
+                    // Multiple species
                     for (size_t i = 0; i < NumPart; i++) {
                         auto family = FML::PARTICLE::GetFamily(part[i]);
                         if (family >= 0 and family < 6)
                             npart_family[family]++;
                     }
                 } else {
+                    // Only CDM
                     npart_family[1] = NumPart;
+                    npart_family_tot[1] = NumPartTot;
                 }
 #endif
 
-                std::vector<size_t> npart_family_tot = npart_family;
-                FML::SumArrayOverTasks(npart_family_tot.data(), npart_family_tot.size());
+                // If OmegaCDM/OmegaM = 1 then we only have CDM and do not need to sum up over tasks
+                // to compute the total number of particles and avoids MPI calls
+                if(OmegaFamilyOverOmegaM[1] != 1.0){
+                  npart_family_tot = npart_family;
+                  FML::SumArrayOverTasks(npart_family_tot.data(), npart_family_tot.size());
+                }
 
                 // Take as input std::vector<double> OmegaFamilyOverOmegaM(6, 1.0);
                 std::vector<double> mass_in_1e10_msunh(6, 0.0);
