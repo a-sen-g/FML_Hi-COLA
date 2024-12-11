@@ -646,6 +646,10 @@ double Lightcone<NDIM, T, U>::get_distance_inv(double dist) {
 
 // Output the lightcone-particles as a gadget file
 // NB: the velocities are not normalized as in "standard" gadget snapshot format (i.e. the sqrt(a))
+// NB: as currently written this only work seamlessly for CDM as with multiple species we currently need MPI-calls
+// in write_gadget_single and not all tasks might output.
+// With output-in-batches the NumPartTotal in the gadget files will just be NumPart as we cannot easily get this information
+// on the fly
 template <int NDIM, class T, class U>
 void Lightcone<NDIM, T, U>::output_gadget(FML::Vector<U> & part_lc, double astart, double aend, std::string label, int ibatch) {
 
@@ -666,7 +670,15 @@ void Lightcone<NDIM, T, U>::output_gadget(FML::Vector<U> & part_lc, double astar
 
     size_t npart_lc = part_lc.size();
     size_t npart_lc_global = npart_lc;
-    FML::SumOverTasks(&npart_lc_global);
+   
+    // If we output all files at the same time then its fine to do MPI calls
+    if(not output_in_batches) {
+      FML::SumOverTasks(&npart_lc_global);
+    } else {
+      // In this case we don't have a good way of getting the total number of particles in all files
+      // so we just set NumPartTot = NumPart
+      npart_lc_global = npart_lc;
+    }
 
     FML::FILEUTILS::GADGET::GadgetWriter gw;
     gw.write_gadget_single(fileprefix + std::to_string(FML::ThisTask),

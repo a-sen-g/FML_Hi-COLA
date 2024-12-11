@@ -385,7 +385,8 @@ if lightcone then
   -- The sky fraction is fsky = 1/2^(ndim_rep - NDIM)
   -- For 3D: if 0 we get an octant and 3 we get the full sky
   plc_ndim_rep = 3
-  -- Output gadget
+  -- Output gadget (NB: with output_in_batches = true then NumPartTotal == NumPart in the gadget files as we don't have an
+  -- easy way to compute this on the fly)
   plc_output_gadgetfile = false
   -- Output ascii
   plc_output_asciifile = false
